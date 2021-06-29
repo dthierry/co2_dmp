@@ -8,79 +8,21 @@ import cartopy.io.shapereader as shpreader
 import pandas as pd
 
 
-def plot_states(df, projection, colors, annotation, title, edgecolor):
-    ax = plt.axes([0, 0, 1, 1],
-                  projection=projection)
-    ax.background_patch.set_visible(False)
-    ax.outline_patch.set_visible(False)
-    ax.set_extent([-125, -66.5, 20, 50], ccrs.Geodetic())
-
-    shapename = 'admin_1_states_provinces_lakes_shp'
-    shpfilename = shpreader.natural_earth(resolution='110m',
-                                          category='cultural', name=shapename)
-
-    reader = shpreader.Reader(shpfilename)
-    states = reader.records()
-    values = list(df[title].unique())
-
-    for state in states:
-        attribute = 'name'
-        name = state.attributes[attribute]
-
-        # get classification
-        try:
-            classification = df.loc[state.attributes[attribute]][title]
-        except:
-            pass
-
-        ax.add_geometries(state.geometry, ccrs.PlateCarree(),
-                          facecolor=(colors[values.index(classification)]),
-                          label=state.attributes[attribute],
-                          edgecolor='#FFFFFF',
-                          linewidth=.25)
-
-    # legend
-    import matplotlib.patches as mpatches
-    handles = []
-    for i in range(len(values)):
-        handles.append(mpatches.Rectangle((0, 0), 1, 1, facecolor=colors[i]))
-        plt.legend(handles, values,
-                   loc='lower left', bbox_to_anchor=(0.025, -0.0),
-                   fancybox=True, frameon=False, fontsize=5)
-
-    # annotate
-    ax.annotate(annotation, xy=(0, 0), xycoords='figure fraction',
-                xytext=(0.0275, -0.025), textcoords='axes fraction',
-                horizontalalignment='left', verticalalignment='center', fontsize=4,
-                )
-
-    plt.title(title, fontsize=8)
-
-    title = title + '.png'
-    plt.savefig(title, bbox_inches='tight', pad_inches=.2, dpi=300)
-    print('Saved: {}'.format(title))
-
-
 def main():
-    # Create a Stamen terrain background instance.
-    stamen_terrain = cimgt.Stamen('toner')
+
 
     fig = plt.figure()
 
-    # Create a GeoAxes in the tile's projection.
-    # ax = fig.add_subplot(1, 1, 1, projection=stamen_terrain.crs)
-    # ax = fig.add_subplot(1, 1, 1, projection=ccrs.AlbersEqualArea())
-    ax = plt.axes(projection=stamen_terrain.crs)
+
+    projection = ccrs.LambertConformal()
+    ax = fig.add_subplot(1, 1, 1, projection=projection, frameon=False)
+    ax.patch.set_visible(False)
+
     # Limit the extent of the map to a small longitude/latitude range.
-    ax.set_extent([-125, -63, 50, 23], crs=ccrs.Geodetic())
+    ax.set_extent([-125, -66.5, 20, 50], crs=ccrs.Geodetic())
+    # No coastlines.
 
     #####
-
-    # Add the Stamen data at zoom level 8.
-    ax.add_image(stamen_terrain, 6)
-    # ax.stock_img()
-    ax.coastlines(resolution='50m', color='black', linewidth=1)
-
     # Plant Barry Site
     ax.plot(-88.00, 31.00, marker='o', color='red', markersize=2,
             alpha=0.7, transform=ccrs.Geodetic())
@@ -150,12 +92,27 @@ def main():
     geodetic_transform = ccrs.Geodetic()._as_mpl_transform(ax)
     text_transform = offset_copy(geodetic_transform, units='dots', x=+5, y=+5)
 
-    for i in range(len(pNames)):
-        text = ax.text(pLx[i], pLy[i], pNames[i], verticalalignment='center', horizontalalignment='left',
-                       transform=text_transform,
-                       bbox=dict(facecolor='lightskyblue', alpha=0.5, boxstyle='round'))
-        plt.savefig("map_{}.png".format(i), format="png", dpi=300)
-        text.set_visible(False)
+    # Get the shapes of the states
+    shapename = 'admin_1_states_provinces_lakes'
+    states_shp = shpreader.natural_earth(resolution='110m',
+                                         category='cultural', name=shapename)
+    # Put colour into the states.
+    def colorize_state(geometry):
+        facecolor = (0.90,1.00,0.95)
+        return {'facecolor': facecolor, 'edgecolor': 'black'}
+    # Add the state shapes.
+    ax.add_geometries(
+        shpreader.Reader(states_shp).geometries(),
+        ccrs.PlateCarree(),
+        styler=colorize_state)
+
+    #for i in range(len(pNames)):
+    #    text = ax.text(pLx[i], pLy[i], pNames[i], verticalalignment='center', horizontalalignment='left',
+    #                   transform=text_transform,
+    #                   bbox=dict(facecolor='lightskyblue', alpha=0.5, boxstyle='round'))
+    #    plt.savefig("map_{}.png".format(i), format="png", dpi=300)
+    #    text.set_visible(False)
+    plt.show()
 
 
 if __name__ == '__main__':
